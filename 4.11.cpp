@@ -1,75 +1,125 @@
 #include <iostream>
 #include <fstream>
-#include <vector>
-#include <iomanip>
-#include <cstdio> 
-
+#include <string>
+#include <map>
+#include <cstdlib>
+#include <ctime>
 using namespace std;
 
-struct Student {
-    string surname;
-    string name;
-    string group;
-};
-
-struct Grade {
-    string surname;
-    int marks[5];
-};
-
-
-bool hasScholarship(const Grade& g) {
-    for (int i = 0; i < 5; ++i) {
-        if (g.marks[i] < 4) return false;
-    }
-    return true;
+string generateCode() {
+    string code;
+    code += 'A' + rand() % 26;
+    code += 'A' + rand() % 26;
+    code += '-';
+    code += '0' + rand() % 10;
+    code += '0' + rand() % 10;
+    return code;
 }
 
-int main() {
-    vector<Student> students;
-    vector<Grade> grades;
+string generateSurname() {
+    string surnames[] = {
+        "Иванов", "Петров", "Сидоров", "Кузнецов", "Смирнов", "Попов"
+    };
+    return surnames[rand() % (sizeof(surnames)/sizeof(surnames[0]))];
+}
 
-    ifstream finF("students.txt");
-    ifstream finG("grades.txt");
+string generateTitle() {
+    string titles[] = {
+        "Искусственный интеллект", "Квантовые вычисления", "Генетика",
+        "Биотехнологии", "Робототехника", "Нейросети"
+    };
+    return titles[rand() % (sizeof(titles)/sizeof(titles[0]))];
+}
 
-    if (!finF || !finG) {
-        cout << "Один из файлов не найден.\n";
-        return 1;
+int generateID() {
+    return 40000 + rand() % 10000;
+}
+
+void generateFiles(int count) {
+    ofstream fileF("F.txt");
+    ofstream fileG("G.txt");
+
+    map<string, string> codeToTitle;
+
+    for (int i = 0; i < count; i++) {
+        int id = generateID();
+        string surname = generateSurname();
+        string code = generateCode();
+
+        if (codeToTitle.find(code) == codeToTitle.end()) {
+            string title = generateTitle();
+            codeToTitle[code] = title;
+            fileG << code << " " << title << "\n";
+        }
+
+        fileF << id << " " << surname << " " << code << "\n";
     }
 
+    fileF.close();
+    fileG.close();
+}
 
-    Student s;
-    while (finF >> s.surname >> s.name >> s.group) {
-        students.push_back(s);
+void createHFile() {
+    ifstream fileF("F.txt");
+    ifstream fileG("G.txt");
+    ofstream fileH("H.txt");
+
+    if (!fileF || !fileG) {
+        cout << "Не удалось открыть входные файлы." << endl;
+        return;
     }
 
-    Grade g;
-    while (finG >> g.surname >> g.marks[0] >> g.marks[1] >> g.marks[2] >> g.marks[3] >> g.marks[4]) {
-        grades.push_back(g);
+    map<string, string> codeToTitle;
+    string code, titlePart, title;
+
+    while (fileG >> code) {
+        getline(fileG, titlePart); 
+        codeToTitle[code] = titlePart.substr(1); 
     }
 
-    finF.close();
-    finG.close();
-
-
-    rename("scholarship.txt", "scholarship.bak");
-
-    ofstream fout("scholarship.txt");
-    fout << left << setw(15) << "Фамилия" << setw(15) << "Имя" << setw(10) << "Группа" << "\n";
-    fout << "----------------------------------------\n";
-
-    for (const auto& st : students) {
-        for (const auto& gr : grades) {
-            if (st.surname == gr.surname && hasScholarship(gr)) {
-                fout << setw(15) << st.surname << setw(15) << st.name << setw(10) << st.group << "\n";
-            }
+    string id, surname;
+    while (fileF >> id >> surname >> code) {
+        if (codeToTitle.find(code) != codeToTitle.end()) {
+            title = codeToTitle[code];
+            fileH << id << " " << surname << " " << code << " " << title << "\n";
         }
     }
 
-    fout.close();
+    fileF.close();
+    fileG.close();
+    fileH.close();
+}
 
-    remove("scholarship.bak");
+void printFile(const string& filename) {
+    ifstream file(filename);
+    if (!file.is_open()) {
+        cout << "Ошибка: не удалось открыть файл " << filename << endl;
+        return;
+    }
 
-    cout << "Ведомость сохранена в 'scholarship.txt'\n";
+    cout << "\nСодержимое файла " << filename << ":\n";
+    string line;
+    while (getline(file, line)) {
+        cout << line << endl;
+    }
+    file.close();
+}
+
+void run() {
+    srand(time(0));
+    int count;
+    cout << "Введите количество студентов: ";
+    cin >> count;
+
+    generateFiles(count);
+    createHFile();
+
+    printFile("F.txt");
+    printFile("G.txt");
+    printFile("H.txt");
+}
+
+int main() {
+    run();
     return 0;
 }
